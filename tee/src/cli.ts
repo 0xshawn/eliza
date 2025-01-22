@@ -1,12 +1,20 @@
 #!/usr/bin/env node
 import { Command } from "commander";
 import { deploy, DeployOptions } from "./index";
+import { writeApiKey } from "./credential";
 
-// Initialize the commander program
 const program = new Command();
 
+const setApiKeyCommand = new Command()
+    .command("set-apikey")
+    .description("Set the X-API-Key for the TEE CLI")
+    .argument("<apiKey>", "The API key to set")
+    .action((apiKey: string) => {
+        writeApiKey(apiKey);
+    });
+
 // Define the `deploy` command
-program
+const deployCommand = new Command()
     .command("deploy")
     .description("Deploy to TEE cloud or locally against a simulator")
     .option("-t, --type <type>", "Specify the TEE vendor type")
@@ -47,9 +55,12 @@ program
             console.error("Error: The --compose option is required.");
             process.exit(1);
         }
-        console.log("Deploying with options:", options);
+        // console.debug("Deploying with options:", options); // TODO, add debug parameter to log or not
         deploy(options);
     });
+
+program.addCommand(setApiKeyCommand);
+program.addCommand(deployCommand);
 
 // Parse the CLI arguments
 program.parse(process.argv);

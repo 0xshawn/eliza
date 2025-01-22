@@ -1,6 +1,9 @@
 import axios from "axios";
 import * as crypto from "crypto";
 import fs from "fs";
+import { getApiKey } from "./credential";
+import { CLOUD_API_URL, CLOUD_URL } from "./constant";
+import { createCvm } from "./phala-cloud";
 
 // Define types for the options
 interface DeployOptions {
@@ -37,67 +40,62 @@ function encryptSecrets(secrets: string): {
 
 // Function to handle deployment
 async function deploy(options: DeployOptions): Promise<void> {
-    try {
-        // Encrypt secrets if provided
-        const { encrypted, key, iv } = options.secrets
-            ? encryptSecrets(options.secrets)
-            : { encrypted: "", key: "", iv: "" };
-
-        console.log("Secrets encrypted:", { key, iv });
-
-        let composeString = "";
-        if (options.compose) {
-            composeString = fs.readFileSync(options.compose, "utf8");
-        }
-
-        // Prepare payload for the request
-        const payload = {
-            teepod_id: 2, // TODO: get from /api/teepods
-            name: options.name,
-            image: "dstack-dev-0.3.4",
-            vcpu: options.vcpu || 1,
-            memory: options.memory || 2048,
-            disk_size: options.diskSize || 20,
-            compose_manifest: {
-                docker_compose_file: composeString,
-                docker_config: {
-                    url: "",
-                    username: "",
-                    password: "",
-                },
-                features: ["kms", "tproxy-net"],
-                kms_enabled: true,
-                manifest_version: 2,
-                name: options.name,
-                public_logs: true,
-                public_sysinfo: true,
-                tproxy_enabled: true,
-            },
-            encrypted_env: encrypted,
-            listed: false,
-        };
-
-        // Make the POST request
-        const response = await axios.post(
-            "https://cloud.phala.network/api/cvms/from_cvm_configuration",
-            payload,
-            {
-                headers: {
-                    "User-Agent": "tee-cli/0.1.0",
-                    "Content-Type": "application/json",
-                    "X-API-Key": "xx",
-                },
-            },
-        );
-
-        console.log("Deployment successful:", response.data);
-    } catch (error: any) {
-        console.error("Error during deployment:", error);
-        console.error(
-            "Error during deployment:",
-            error.response?.data || error.message,
-        );
+    const apiKey = getApiKey();
+    if (!apiKey) {
+        console.error("Error: API key not found. Please set an API key first.");
+        process.exit(1);
     }
+
+    // Encrypt secrets if provided
+    const { encrypted, key, iv } = options.secrets
+        ? encryptSecrets(options.secrets)
+        : { encrypted: "", key: "", iv: "" };
+
+    // console.debug("Secrets encrypted:", { key, iv });
+
+    let composeString = "";
+    if (options.compose) {
+        composeString = fs.readFileSync(options.compose, "utf8");
+    }
+
+    // Prepare payload for the request
+    const payload = {
+        teepod_id: 2, // TODO: get from /api/teepods
+        name: options.name,
+        image: "dstack-dev-0.3.4",
+        vcpu: options.vcpu || 1,
+        memory: options.memory || 2048,
+        disk_size: options.diskSize || 20,
+        compose_manifest: {
+            docker_compose_file: composeString,
+            docker_config: {
+                url: "",
+                username: "",
+                password: "",
+            },
+            features: ["kms", "tproxy-net"],
+            kms_enabled: true,
+            manifest_version: 2,
+            name: options.name,
+            public_logs: true,
+            public_sysinfo: true,
+            tproxy_enabled: true,
+        },
+        encrypted_env: encrypted,
+        listed: false,
+    };
+
+    // Make the POST request
+    const response = await createCvm(payload, apiKey);
+    if (!response) {
+        console.error("Error during deployment");
+        return;
+    }
+
+    const appId = response.app_id;
+    console.log("Deployment successful");
+    console.log("App Id:", appId);
+    console.log("App URL:", `${CLOUD_URL}/dashboard/cvms/app_${appId}`);
 }
 
 export { deploy, DeployOptions };
