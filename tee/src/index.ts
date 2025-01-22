@@ -1,0 +1,103 @@
+import axios from "axios";
+import * as crypto from "crypto";
+import fs from "fs";
+
+// Define types for the options
+interface DeployOptions {
+    type?: string;
+    mode?: string;
+    name: string;
+    secrets?: string;
+    vcpu?: number;
+    memory?: number;
+    diskSize?: number;
+    compose?: string;
+}
+
+// Helper function to encrypt secrets
+function encryptSecrets(secrets: string): {
+    encrypted: string;
+    key: string;
+    iv: string;
+} {
+    const algorithm = "aes-256-cbc";
+    const key = crypto.randomBytes(32);
+    const iv = crypto.randomBytes(16);
+
+    const cipher = crypto.createCipheriv(algorithm, key, iv);
+    let encrypted = cipher.update(secrets, "utf8", "hex");
+    encrypted += cipher.final("hex");
+
+    return {
+        encrypted,
+        key: key.toString("hex"),
+        iv: iv.toString("hex"),
+    };
+}
+
+// Function to handle deployment
+async function deploy(options: DeployOptions): Promise<void> {
+    try {
+        // Encrypt secrets if provided
+        const { encrypted, key, iv } = options.secrets
+            ? encryptSecrets(options.secrets)
+            : { encrypted: "", key: "", iv: "" };
+
+        console.log("Secrets encrypted:", { key, iv });
+
+        let composeString = "";
+        if (options.compose) {
+            composeString = fs.readFileSync(options.compose, "utf8");
+        }
+
+        // Prepare payload for the request
+        const payload = {
+            teepod_id: 2, // TODO: get from /api/teepods
+            name: options.name,
+            image: "dstack-dev-0.3.4",
+            vcpu: options.vcpu || 1,
+            memory: options.memory || 2048,
+            disk_size: options.diskSize || 20,
+            compose_manifest: {
+                docker_compose_file: composeString,
+                docker_config: {
+                    url: "",
+                    username: "",
+                    password: "",
+                },
+                features: ["kms", "tproxy-net"],
+                kms_enabled: true,
+                manifest_version: 2,
+                name: options.name,
+                public_logs: true,
+                public_sysinfo: true,
+                tproxy_enabled: true,
+            },
+            encrypted_env: encrypted,
+            listed: false,
+        };
+
+        // Make the POST request
+        const response = await axios.post(
+            "https://cloud.phala.network/api/cvms/from_cvm_configuration",
+            payload,
+            {
+                headers: {
+                    "User-Agent": "tee-cli/0.1.0",
+                    "Content-Type": "application/json",
+                    "X-API-Key": "xx",
+                },
+            },
+        );
+
+        console.log("Deployment successful:", response.data);
+    } catch (error: any) {
+        console.error("Error during deployment:", error);
+        console.error(
+            "Error during deployment:",
+            error.response?.data || error.message,
+        );
+    }
+}
+
+export { deploy, DeployOptions };

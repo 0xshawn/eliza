@@ -1,0 +1,5 @@
+services:
+  httpbin:
+    image: kennethreitz/httpbin:latest
+    ports:
+      - "80:80"
