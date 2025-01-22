@@ -3,7 +3,7 @@ import * as crypto from "crypto";
 import fs from "fs";
 import { getApiKey } from "./credential";
 import { CLOUD_API_URL, CLOUD_URL } from "./constant";
-import { createCvm } from "./phala-cloud";
+import { createCvm, queryTeepods } from "./phala-cloud";
 
 // Define types for the options
 interface DeployOptions {
@@ -98,4 +98,18 @@ async function deploy(options: DeployOptions): Promise<void> {
     console.log("App URL:", `${CLOUD_URL}/dashboard/cvms/app_${appId}`);
 }
 
-export { deploy, DeployOptions };
+async function teepods() {
+    const apiKey = getApiKey();
+    if (!apiKey) {
+        console.error("Error: API key not found. Please set an API key first.");
+        process.exit(1);
+    }
+    const teepods = await queryTeepods(apiKey);
+    console.log("Teepods:");
+    for (const teepod of teepods) {
+        console.log(teepod.id, teepod.name, teepod.status);
+    }
+    process.exit(0);
+}
+
+export { deploy, DeployOptions, teepods };

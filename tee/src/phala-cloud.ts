@@ -6,6 +6,18 @@ interface CreateCvmResponse {
     app_url: string;
 }
 
+const headers = {
+    "User-Agent": `tee-cli/${CLI_VERSION}`,
+    "Content-Type": "application/json",
+};
+
+async function queryTeepods(apiKey: string): Promise<any> {
+    const response = await axios.get(`${CLOUD_API_URL}/api/v1/teepods`, {
+        headers: { ...headers, "X-API-Key": apiKey },
+    });
+    return response.data;
+}
+
 async function createCvm(
     payload: any,
     apiKey: string,
@@ -15,11 +27,7 @@ async function createCvm(
             `${CLOUD_API_URL}/api/v1/cvms/from_cvm_configuration`,
             payload,
             {
-                headers: {
-                    "User-Agent": `tee-cli/${CLI_VERSION}`,
-                    "Content-Type": "application/json",
-                    "X-API-Key": apiKey,
-                },
+                headers: { ...headers, "X-API-Key": apiKey },
             },
         );
         return response.data as CreateCvmResponse;
@@ -33,4 +41,4 @@ async function createCvm(
     }
 }
 
-export { createCvm };
+export { createCvm, queryTeepods };

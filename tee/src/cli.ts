@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { Command } from "commander";
-import { deploy, DeployOptions } from "./index";
+import { deploy, DeployOptions, teepods } from "./index";
+import { queryTeepods } from "./phala-cloud";
 import { writeApiKey } from "./credential";
 
 const program = new Command();
@@ -59,8 +60,16 @@ const deployCommand = new Command()
         deploy(options);
     });
 
+const queryTeepodsCommand = new Command()
+    .command("teepods")
+    .description("Query the teepods")
+    .action(() => {
+        teepods();
+    });
+
 program.addCommand(setApiKeyCommand);
 program.addCommand(deployCommand);
+program.addCommand(queryTeepodsCommand);
 
 // Parse the CLI arguments
 program.parse(process.argv);
