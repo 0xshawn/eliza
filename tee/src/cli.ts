@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 import { Command } from "commander";
-import { deploy, DeployOptions, teepods } from "./index";
-import { queryTeepods } from "./phala-cloud";
+import { deploy, DeployOptions, images, teepods } from "./index";
 import { writeApiKey } from "./credential";
 
 const program = new Command();
@@ -60,16 +59,29 @@ const deployCommand = new Command()
         deploy(options);
     });
 
-const queryTeepodsCommand = new Command()
+const teepodsCommand = new Command()
     .command("teepods")
     .description("Query the teepods")
     .action(() => {
         teepods();
     });
 
+const imagesCommand = new Command()
+    .command("images")
+    .description("Query the images")
+    .option("--teepod-id <teepodId>", "Specify the id of the teepod")
+    .action((options: { teepodId: string }) => {
+        if (!options.teepodId) {
+            console.error("Error: The --teepod-id option is required.");
+            process.exit(1);
+        }
+        images(options.teepodId);
+    });
+
 program.addCommand(setApiKeyCommand);
 program.addCommand(deployCommand);
-program.addCommand(queryTeepodsCommand);
+program.addCommand(teepodsCommand);
+program.addCommand(imagesCommand);
 
 // Parse the CLI arguments
 program.parse(process.argv);

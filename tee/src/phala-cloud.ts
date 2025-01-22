@@ -12,10 +12,36 @@ const headers = {
 };
 
 async function queryTeepods(apiKey: string): Promise<any> {
-    const response = await axios.get(`${CLOUD_API_URL}/api/v1/teepods`, {
-        headers: { ...headers, "X-API-Key": apiKey },
-    });
-    return response.data;
+    try {
+        const response = await axios.get(`${CLOUD_API_URL}/api/v1/teepods`, {
+            headers: { ...headers, "X-API-Key": apiKey },
+        });
+        return response.data;
+    } catch (error: any) {
+        console.error(
+            "Error during teepod query:",
+            error.response?.data || error.message,
+        );
+        return null;
+    }
+}
+
+async function queryImages(apiKey: string, teepodId: string): Promise<any> {
+    try {
+        const response = await axios.get(
+            `${CLOUD_API_URL}/api/v1/teepods/${teepodId}/images`,
+            {
+                headers: { ...headers, "X-API-Key": apiKey },
+            },
+        );
+        return response.data;
+    } catch (error: any) {
+        console.error(
+            "Error during image query:",
+            error.response?.data || error.message,
+        );
+        return null;
+    }
 }
 
 async function createCvm(
@@ -32,7 +58,6 @@ async function createCvm(
         );
         return response.data as CreateCvmResponse;
     } catch (error: any) {
-        console.error("Error during deployment:", error);
         console.error(
             "Error during deployment:",
             error.response?.data || error.message,
@@ -41,4 +66,4 @@ async function createCvm(
     }
 }
 
-export { createCvm, queryTeepods };
+export { createCvm, queryTeepods, queryImages };
