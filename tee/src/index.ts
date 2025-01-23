@@ -15,6 +15,7 @@ import { hexToUint8Array, uint8ArrayToHex } from "./lib";
 // Define types for the options
 interface DeployOptions {
     debug?: boolean;
+    apiKey?: string;
     type?: string;
     mode?: string;
     name: string;
@@ -77,11 +78,6 @@ async function encryptSecrets(secrets: Env[], pubkey: string): Promise<string> {
 // Function to handle deployment
 async function deploy(options: DeployOptions): Promise<void> {
     console.log("Deploying CVM ...");
-    const apiKey = getApiKey();
-    if (!apiKey) {
-        console.error("Error: API key not found. Please set an API key first.");
-        process.exit(1);
-    }
 
     let composeString = "";
     if (options.compose) {
@@ -114,7 +110,7 @@ async function deploy(options: DeployOptions): Promise<void> {
         listed: false,
     };
 
-    const pubkey = await getPubkeyFromCvm(vm_config, apiKey);
+    const pubkey = await getPubkeyFromCvm(vm_config);
     if (!pubkey) {
         console.error("Error: Failed to get pubkey from CVM.");
         process.exit(1);
@@ -132,15 +128,12 @@ async function deploy(options: DeployOptions): Promise<void> {
     options.debug && console.log("Env:", options.envs);
 
     // Make the POST request
-    const response = await createCvm(
-        {
-            ...vm_config,
-            encrypted_env,
-            app_env_encrypt_pubkey,
-            app_id_salt,
-        },
-        apiKey,
-    );
+    const response = await createCvm({
+        ...vm_config,
+        encrypted_env,
+        app_env_encrypt_pubkey,
+        app_id_salt,
+    });
     if (!response) {
         console.error("Error during deployment");
         return;
@@ -160,7 +153,7 @@ async function teepods() {
         console.error("Error: API key not found. Please set an API key first.");
         process.exit(1);
     }
-    const teepods = await queryTeepods(apiKey);
+    const teepods = await queryTeepods();
     console.log("Teepods:");
     for (const teepod of teepods) {
         console.log(teepod.id, teepod.name, teepod.status);
@@ -170,12 +163,8 @@ async function teepods() {
 
 async function images(teepodId: string) {
     console.log("Querying images for teepod:", teepodId);
-    const apiKey = getApiKey();
-    if (!apiKey) {
-        console.error("Error: API key not found. Please set an API key first.");
-        process.exit(1);
-    }
-    const images = await queryImages(apiKey, teepodId);
+
+    const images = await queryImages(teepodId);
     if (!images) {
         process.exit(1);
     }
