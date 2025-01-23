@@ -3,8 +3,9 @@ import { Command } from "commander";
 import { deploy, DeployOptions, images, teepods } from "./index";
 import { writeApiKey } from "./credential";
 import fs from "fs";
+import { CLI_VERSION } from "./constant";
 
-const program = new Command();
+const program = new Command().version(CLI_VERSION);
 
 const setApiKeyCommand = new Command()
     .command("set-apikey")
@@ -43,6 +44,7 @@ const deployCommand = new Command()
         "--env-file <envFile>",
         "Specify a file containing environment variables",
     )
+    .option("--debug", "Enable debug mode to print more information", false)
     .action((options: DeployOptions) => {
         if (!options.type || options.type !== "phala") {
             console.error(
@@ -80,7 +82,7 @@ const deployCommand = new Command()
 
         if (options.envFile) {
             const envFileContent = fs.readFileSync(options.envFile, "utf8");
-            console.log("envFileContent", envFileContent);
+            options.debug && console.log("envFileContent", envFileContent);
             for (const line of envFileContent.split("\n")) {
                 if (line.includes("=")) {
                     const [key, value] = line.split("=");

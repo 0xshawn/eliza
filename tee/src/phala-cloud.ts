@@ -8,6 +8,7 @@ interface CreateCvmResponse {
 
 interface GetPubkeyFromCvmResponse {
     app_env_encrypt_pubkey: string;
+    app_id_salt: string;
 }
 
 const headers = {
@@ -49,13 +50,13 @@ async function queryImages(apiKey: string, teepodId: string): Promise<any> {
 }
 
 async function createCvm(
-    payload: any,
+    vm_config: any,
     apiKey: string,
 ): Promise<CreateCvmResponse | null> {
     try {
         const response = await axios.post(
             `${CLOUD_API_URL}/api/v1/cvms/from_cvm_configuration`,
-            payload,
+            vm_config,
             {
                 headers: { ...headers, "X-API-Key": apiKey },
             },
@@ -71,13 +72,13 @@ async function createCvm(
 }
 
 async function getPubkeyFromCvm(
-    payload: any,
+    vm_config: any,
     apiKey: string,
 ): Promise<GetPubkeyFromCvmResponse | null> {
     try {
         const response = await axios.post(
             `${CLOUD_API_URL}/api/v1/cvms/pubkey/from_cvm_configuration`,
-            payload,
+            vm_config,
             {
                 headers: { ...headers, "X-API-Key": apiKey },
             },

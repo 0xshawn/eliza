@@ -9,9 +9,12 @@ import {
     queryImages,
     queryTeepods,
 } from "./phala-cloud";
+import { x25519 } from "@noble/curves/ed25519";
+import { hexToUint8Array, uint8ArrayToHex } from "./lib";
 
 // Define types for the options
 interface DeployOptions {
+    debug?: boolean;
     type?: string;
     mode?: string;
     name: string;
@@ -31,24 +34,44 @@ interface Env {
 }
 
 // Helper function to encrypt secrets
-function encryptSecrets(secrets: string): {
-    encrypted: string;
-    key: string;
-    iv: string;
-} {
-    const algorithm = "aes-256-cbc";
-    const key = crypto.randomBytes(32);
-    const iv = crypto.randomBytes(16);
+async function encryptSecrets(secrets: Env[], pubkey: string): Promise<string> {
+    const envsJson = JSON.stringify({ env: secrets });
 
-    const cipher = crypto.createCipheriv(algorithm, key, iv);
-    let encrypted = cipher.update(secrets, "utf8", "hex");
-    encrypted += cipher.final("hex");
+    // Generate private key and derive public key
+    const privateKey = x25519.utils.randomPrivateKey();
+    const publicKey = x25519.getPublicKey(privateKey);
 
-    return {
-        encrypted,
-        key: key.toString("hex"),
-        iv: iv.toString("hex"),
-    };
+    // Generate shared key
+    const remotePubkey = hexToUint8Array(pubkey);
+    const shared = x25519.getSharedSecret(privateKey, remotePubkey);
+
+    // Import shared key for AES-GCM
+    const importedShared = await crypto.subtle.importKey(
+        "raw",
+        shared,
+        { name: "AES-GCM", length: 256 },
+        true,
+        ["encrypt"],
+    );
+
+    // Encrypt the data
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const encrypted = await crypto.subtle.encrypt(
+        { name: "AES-GCM", iv },
+        importedShared,
+        new TextEncoder().encode(envsJson),
+    );
+
+    // Combine all components
+    const result = new Uint8Array(
+        publicKey.length + iv.length + encrypted.byteLength,
+    );
+
+    result.set(publicKey);
+    result.set(iv, publicKey.length);
+    result.set(new Uint8Array(encrypted), publicKey.length + iv.length);
+
+    return uint8ArrayToHex(result);
 }
 
 // Function to handle deployment
@@ -60,20 +83,13 @@ async function deploy(options: DeployOptions): Promise<void> {
         process.exit(1);
     }
 
-    // Encrypt secrets if provided
-    const { encrypted, key, iv } = options.secrets
-        ? encryptSecrets(options.secrets)
-        : { encrypted: "", key: "", iv: "" };
-
-    // console.debug("Secrets encrypted:", { key, iv });
-
     let composeString = "";
     if (options.compose) {
         composeString = fs.readFileSync(options.compose, "utf8");
     }
 
-    // Prepare payload for the request
-    const payload = {
+    // Prepare vm_config for the request
+    const vm_config = {
         teepod_id: 2, // TODO: get from /api/teepods
         name: options.name,
         image: "dstack-dev-0.3.4",
@@ -95,34 +111,46 @@ async function deploy(options: DeployOptions): Promise<void> {
             public_sysinfo: true,
             tproxy_enabled: true,
         },
-        encrypted_env: encrypted,
         listed: false,
     };
 
-    const pubkey = await getPubkeyFromCvm(payload, apiKey);
+    const pubkey = await getPubkeyFromCvm(vm_config, apiKey);
     if (!pubkey) {
         console.error("Error: Failed to get pubkey from CVM.");
         process.exit(1);
     }
-
     const app_env_encrypt_pubkey = pubkey.app_env_encrypt_pubkey;
+    const app_id_salt = pubkey.app_id_salt;
 
-    console.log("Pubkey:", app_env_encrypt_pubkey);
-    console.log("Env:", options.envs);
+    const encrypted_env = await encryptSecrets(
+        options.envs,
+        pubkey.app_env_encrypt_pubkey,
+    );
+
+    options.debug && console.log("Pubkey:", app_env_encrypt_pubkey);
+    options.debug && console.log("Encrypted Env:", encrypted_env);
+    options.debug && console.log("Env:", options.envs);
+
+    // Make the POST request
+    const response = await createCvm(
+        {
+            ...vm_config,
+            encrypted_env,
+            app_env_encrypt_pubkey,
+            app_id_salt,
+        },
+        apiKey,
+    );
+    if (!response) {
+        console.error("Error during deployment");
+        return;
+    }
+
+    const appId = response.app_id;
+    console.log("Deployment successful");
+    console.log("App Id:", appId);
+    console.log("App URL:", `${CLOUD_URL}/dashboard/cvms/app_${appId}`);
     process.exit(0);
-
-    // // Make the POST request
-    // const response = await createCvm(payload, apiKey);
-    // if (!response) {
-    //     console.error("Error during deployment");
-    //     return;
-    // }
-
-    // const appId = response.app_id;
-    // console.log("Deployment successful");
-    // console.log("App Id:", appId);
-    // console.log("App URL:", `${CLOUD_URL}/dashboard/cvms/app_${appId}`);
-    // process.exit(0);
 }
 
 async function teepods() {
