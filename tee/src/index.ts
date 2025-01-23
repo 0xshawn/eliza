@@ -3,7 +3,12 @@ import * as crypto from "crypto";
 import fs from "fs";
 import { getApiKey } from "./credential";
 import { CLOUD_API_URL, CLOUD_URL } from "./constant";
-import { createCvm, queryImages, queryTeepods } from "./phala-cloud";
+import {
+    createCvm,
+    getPubkeyFromCvm,
+    queryImages,
+    queryTeepods,
+} from "./phala-cloud";
 
 // Define types for the options
 interface DeployOptions {
@@ -15,6 +20,14 @@ interface DeployOptions {
     memory?: number;
     diskSize?: number;
     compose?: string;
+    env?: string[];
+    envFile?: string;
+    envs: Env[];
+}
+
+interface Env {
+    key: string;
+    value: string;
 }
 
 // Helper function to encrypt secrets
@@ -86,18 +99,30 @@ async function deploy(options: DeployOptions): Promise<void> {
         listed: false,
     };
 
-    // Make the POST request
-    const response = await createCvm(payload, apiKey);
-    if (!response) {
-        console.error("Error during deployment");
-        return;
+    const pubkey = await getPubkeyFromCvm(payload, apiKey);
+    if (!pubkey) {
+        console.error("Error: Failed to get pubkey from CVM.");
+        process.exit(1);
     }
 
-    const appId = response.app_id;
-    console.log("Deployment successful");
-    console.log("App Id:", appId);
-    console.log("App URL:", `${CLOUD_URL}/dashboard/cvms/app_${appId}`);
+    const app_env_encrypt_pubkey = pubkey.app_env_encrypt_pubkey;
+
+    console.log("Pubkey:", app_env_encrypt_pubkey);
+    console.log("Env:", options.envs);
     process.exit(0);
+
+    // // Make the POST request
+    // const response = await createCvm(payload, apiKey);
+    // if (!response) {
+    //     console.error("Error during deployment");
+    //     return;
+    // }
+
+    // const appId = response.app_id;
+    // console.log("Deployment successful");
+    // console.log("App Id:", appId);
+    // console.log("App URL:", `${CLOUD_URL}/dashboard/cvms/app_${appId}`);
+    // process.exit(0);
 }
 
 async function teepods() {

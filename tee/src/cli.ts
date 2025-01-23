@@ -2,6 +2,7 @@
 import { Command } from "commander";
 import { deploy, DeployOptions, images, teepods } from "./index";
 import { writeApiKey } from "./credential";
+import fs from "fs";
 
 const program = new Command();
 
@@ -34,6 +35,14 @@ const deployCommand = new Command()
         "-c, --compose <compose>",
         "Specify the docker compose file to be deployed",
     )
+    .option(
+        "-e, --env <env...>",
+        "Specify environment variables in the form of KEY=VALUE",
+    )
+    .option(
+        "--env-file <envFile>",
+        "Specify a file containing environment variables",
+    )
     .action((options: DeployOptions) => {
         if (!options.type || options.type !== "phala") {
             console.error(
@@ -55,6 +64,39 @@ const deployCommand = new Command()
             console.error("Error: The --compose option is required.");
             process.exit(1);
         }
+
+        // Process environment variables
+        const envVars: Record<string, string> = {};
+        if (options.env) {
+            for (const env of options.env) {
+                if (env.includes("=")) {
+                    const [key, value] = env.split("=");
+                    if (key && value) {
+                        envVars[key] = value;
+                    }
+                }
+            }
+        }
+
+        if (options.envFile) {
+            const envFileContent = fs.readFileSync(options.envFile, "utf8");
+            console.log("envFileContent", envFileContent);
+            for (const line of envFileContent.split("\n")) {
+                if (line.includes("=")) {
+                    const [key, value] = line.split("=");
+                    if (key && value) {
+                        envVars[key] = value;
+                    }
+                }
+            }
+        }
+
+        // Add environment variables to the payload
+        options.envs = Object.entries(envVars).map(([key, value]) => ({
+            key,
+            value,
+        }));
+
         // console.debug("Deploying with options:", options); // TODO, add debug parameter to log or not
         deploy(options);
     });
