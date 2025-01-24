@@ -30,7 +30,7 @@ npx tee-cli deploy \
   -t phala \
   -m docker-compose \
   -n eliza \
-  -c docker-compose.yml -e FOO=BAR --env-file./.env
+  -c sample.yml -e FOO=BAR --env-file./.env
 ```
 
 ## Debug
