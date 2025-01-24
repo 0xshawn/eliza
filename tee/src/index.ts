@@ -15,7 +15,6 @@ import { hexToUint8Array, uint8ArrayToHex } from "./lib";
 // Define types for the options
 interface DeployOptions {
     debug?: boolean;
-    apiKey?: string;
     type?: string;
     mode?: string;
     name: string;

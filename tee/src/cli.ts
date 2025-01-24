@@ -29,10 +29,6 @@ const deployCommand = new Command()
         "Specify the name of the docker image or agent being deployed",
     )
     .option(
-        "-s, --secrets <secrets>",
-        "Specify the secrets associated with the agent (encrypted)",
-    )
-    .option(
         "-c, --compose <compose>",
         "Specify the docker compose file to be deployed",
     )

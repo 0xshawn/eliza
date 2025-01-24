@@ -26,7 +26,11 @@ npx tee-cli images --teepod-id 2
 3. Deploy the CVM via compose file
 
 ```bash
-npx tee-cli deploy -t phala -m docker-compose -n eliza -s "my-secret" -c ./docker-compose.yml
+npx tee-cli deploy \
+  -t phala \
+  -m docker-compose \
+  -n eliza \
+  -c docker-compose.yml -e FOO=BAR --env-file./.env
 ```
 
 ## Debug
