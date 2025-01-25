@@ -18,6 +18,7 @@ interface GetCvmByAppIdResponse {
     app_id: string;
     app_url: string;
     encrypted_env_pubkey: string;
+    status: string;
 }
 
 interface UpgradeCvmResponse {
@@ -159,6 +160,25 @@ async function upgradeCvm(
     }
 }
 
+async function startCvm(appId: string): Promise<any> {
+    try {
+        const response = await axios.post(
+            `${CLOUD_API_URL}/api/v1/cvms/app_${appId}/start`,
+            { app_id: appId },
+            {
+                headers: { ...headers, "X-API-Key": retrieveApiKey() },
+            },
+        );
+        return response.data;
+    } catch (error: any) {
+        console.error(
+            "Error during start cvm:",
+            error.response?.data || error.message,
+        );
+        return null;
+    }
+}
+
 export {
     createCvm,
     queryTeepods,
@@ -166,4 +186,5 @@ export {
     getPubkeyFromCvm,
     getCvmByAppId,
     upgradeCvm,
+    startCvm,
 };

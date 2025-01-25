@@ -9,6 +9,7 @@ import {
     getPubkeyFromCvm,
     queryImages,
     queryTeepods,
+    startCvm,
     upgradeCvm,
 } from "./phala-cloud";
 import { x25519 } from "@noble/curves/ed25519";
@@ -228,6 +229,25 @@ async function upgrade(options: UpgradeOptions) {
     if (response.detail && response.detail !== "Accepted") {
         console.error("Fail to upgrade CVM:", response.detail);
         process.exit(1);
+    }
+
+    // Make sure the CVM is running,
+    // because of EXITED status once finished upgraded
+    let count = 0;
+    while (true) {
+        await new Promise((resolve) => setTimeout(resolve, 5000));
+        if (count > 5) {
+            console.error("CVM is not running after 30 seconds");
+            process.exit(1);
+        }
+        const cvm = await getCvmByAppId(options.appId);
+        if (cvm?.status.toLowerCase() === "exited") {
+            // start the cvm
+            await startCvm(options.appId);
+        } else {
+            break;
+        }
+        count++;
     }
 
     console.log("Upgrade successful");
