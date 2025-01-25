@@ -12,6 +12,18 @@ interface GetPubkeyFromCvmResponse {
     app_id_salt: string;
 }
 
+interface GetCvmByAppIdResponse {
+    id: string;
+    name: string;
+    app_id: string;
+    app_url: string;
+    encrypted_env_pubkey: string;
+}
+
+interface UpgradeCvmResponse {
+    detail: string;
+}
+
 const headers = {
     "User-Agent": `tee-cli/${CLI_VERSION}`,
     "Content-Type": "application/json",
@@ -77,7 +89,7 @@ async function createCvm(vm_config: any): Promise<CreateCvmResponse | null> {
         return response.data as CreateCvmResponse;
     } catch (error: any) {
         console.error(
-            "Error during deployment:",
+            "Error during create cvm:",
             error.response?.data || error.message,
         );
         return null;
@@ -98,11 +110,60 @@ async function getPubkeyFromCvm(
         return response.data as GetPubkeyFromCvmResponse;
     } catch (error: any) {
         console.error(
-            "Error during deployment:",
+            "Error during get pubkey from cvm:",
             error.response?.data || error.message,
         );
         return null;
     }
 }
 
-export { createCvm, queryTeepods, queryImages, getPubkeyFromCvm };
+async function getCvmByAppId(
+    appId: string,
+): Promise<GetCvmByAppIdResponse | null> {
+    try {
+        const response = await axios.get(
+            `${CLOUD_API_URL}/api/v1/cvms/app_${appId}`,
+            {
+                headers: { ...headers, "X-API-Key": retrieveApiKey() },
+            },
+        );
+        return response.data as GetCvmByAppIdResponse;
+    } catch (error: any) {
+        console.error(
+            "Error during get cvm by app id:",
+            error.response?.data || error.message,
+        );
+        return null;
+    }
+}
+
+async function upgradeCvm(
+    appId: string,
+    vm_config: any,
+): Promise<UpgradeCvmResponse | null> {
+    try {
+        const response = await axios.put(
+            `${CLOUD_API_URL}/api/v1/cvms/app_${appId}/compose`,
+            vm_config,
+            {
+                headers: { ...headers, "X-API-Key": retrieveApiKey() },
+            },
+        );
+        return response.data as UpgradeCvmResponse;
+    } catch (error: any) {
+        console.error(
+            "Error during upgrade cvm:",
+            error.response?.data || error.message,
+        );
+        return null;
+    }
+}
+
+export {
+    createCvm,
+    queryTeepods,
+    queryImages,
+    getPubkeyFromCvm,
+    getCvmByAppId,
+    upgradeCvm,
+};

@@ -5,24 +5,34 @@ import { getApiKey } from "./credential";
 import { CLOUD_API_URL, CLOUD_URL } from "./constant";
 import {
     createCvm,
+    getCvmByAppId,
     getPubkeyFromCvm,
     queryImages,
     queryTeepods,
+    upgradeCvm,
 } from "./phala-cloud";
 import { x25519 } from "@noble/curves/ed25519";
 import { hexToUint8Array, uint8ArrayToHex } from "./lib";
 
-// Define types for the options
 interface DeployOptions {
     debug?: boolean;
     type?: string;
     mode?: string;
     name: string;
-    secrets?: string;
     vcpu?: number;
     memory?: number;
     diskSize?: number;
     compose?: string;
+    env?: string[];
+    envFile?: string;
+    envs: Env[];
+}
+
+interface UpgradeOptions {
+    type: string;
+    mode: string;
+    appId: string;
+    compose: string;
     env?: string[];
     envFile?: string;
     envs: Env[];
@@ -174,4 +184,56 @@ async function images(teepodId: string) {
     process.exit(0);
 }
 
-export { deploy, DeployOptions, teepods, images };
+async function upgrade(options: UpgradeOptions) {
+    console.log("Upgrading app:", options.appId);
+    const cvm = await getCvmByAppId(options.appId);
+    if (!cvm) {
+        console.error("CVM not found");
+        process.exit(1);
+    }
+
+    let composeString = "";
+    if (options.compose) {
+        composeString = fs.readFileSync(options.compose, "utf8");
+    }
+
+    let encrypted_env = "";
+    if (options.envs.length > 0) {
+        encrypted_env = await encryptSecrets(
+            options.envs,
+            cvm.encrypted_env_pubkey,
+        );
+        console.log("Encrypted Env:", encrypted_env);
+    }
+
+    const vm_config = {
+        compose_manifest: {
+            docker_compose_file: composeString,
+            manifest_version: 1,
+            runner: "docker-compose",
+            version: "1.0.0",
+            features: ["kms", "tproxy-net"],
+            name: `app_${options.appId}`,
+        },
+        encrypted_env,
+        allow_restart: true,
+    };
+
+    const response = await upgradeCvm(options.appId, vm_config);
+    if (!response) {
+        console.error("Error during upgrade");
+        process.exit(1);
+    }
+
+    if (response.detail && response.detail !== "Accepted") {
+        console.error("Fail to upgrade CVM:", response.detail);
+        process.exit(1);
+    }
+
+    console.log("Upgrade successful");
+    console.log("App Id:", options.appId);
+    console.log("App URL:", `${CLOUD_URL}/dashboard/cvms/app_${options.appId}`);
+    process.exit(0);
+}
+
+export { deploy, DeployOptions, teepods, images, upgrade, UpgradeOptions, Env };

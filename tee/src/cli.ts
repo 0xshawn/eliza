@@ -4,6 +4,40 @@ import { deploy, DeployOptions, images, teepods } from "./index";
 import { writeApiKey } from "./credential";
 import fs from "fs";
 import { CLI_VERSION } from "./constant";
+import { upgrade, UpgradeOptions, Env } from "./index";
+
+const parseEnv = (envs: string[], envFile: string): Env[] => {
+    // Process environment variables
+    const envVars: Record<string, string> = {};
+    if (envs) {
+        for (const env of envs) {
+            if (env.includes("=")) {
+                const [key, value] = env.split("=");
+                if (key && value) {
+                    envVars[key] = value;
+                }
+            }
+        }
+    }
+
+    if (envFile) {
+        const envFileContent = fs.readFileSync(envFile, "utf8");
+        for (const line of envFileContent.split("\n")) {
+            if (line.includes("=")) {
+                const [key, value] = line.split("=");
+                if (key && value) {
+                    envVars[key] = value;
+                }
+            }
+        }
+    }
+
+    // Add environment variables to the payload
+    return Object.entries(envVars).map(([key, value]) => ({
+        key,
+        value,
+    }));
+};
 
 const program = new Command().version(CLI_VERSION);
 
@@ -64,38 +98,8 @@ const deployCommand = new Command()
         }
 
         // Process environment variables
-        const envVars: Record<string, string> = {};
-        if (options.env) {
-            for (const env of options.env) {
-                if (env.includes("=")) {
-                    const [key, value] = env.split("=");
-                    if (key && value) {
-                        envVars[key] = value;
-                    }
-                }
-            }
-        }
+        options.envs = parseEnv(options.env || [], options.envFile || "");
 
-        if (options.envFile) {
-            const envFileContent = fs.readFileSync(options.envFile, "utf8");
-            options.debug && console.log("envFileContent", envFileContent);
-            for (const line of envFileContent.split("\n")) {
-                if (line.includes("=")) {
-                    const [key, value] = line.split("=");
-                    if (key && value) {
-                        envVars[key] = value;
-                    }
-                }
-            }
-        }
-
-        // Add environment variables to the payload
-        options.envs = Object.entries(envVars).map(([key, value]) => ({
-            key,
-            value,
-        }));
-
-        // console.debug("Deploying with options:", options); // TODO, add debug parameter to log or not
         deploy(options);
     });
 
@@ -118,10 +122,44 @@ const imagesCommand = new Command()
         images(options.teepodId);
     });
 
+const upgradeCommand = new Command()
+    .command("upgrade")
+    .description("Upgrade the TEE CLI")
+    .option("-t, --type <type>", "Specify the TEE vendor type")
+    .option(
+        "-m, --mode <mode>",
+        "Specify the deployment mode (e.g., agent docker file or other local testing deployments)",
+    )
+    .option("--app-id <appId>", "Specify the app id")
+    .option(
+        "-e, --env <env...>",
+        "Specify environment variables in the form of KEY=VALUE",
+    )
+    .option(
+        "--env-file <envFile>",
+        "Specify a file containing environment variables",
+    )
+    .option(
+        "-c, --compose <compose>",
+        "Specify the docker compose file to be deployed",
+    )
+    .action((options: UpgradeOptions) => {
+        if (!options.compose) {
+            console.error("Error: The --compose option is required.");
+            process.exit(1);
+        }
+
+        // Process environment variables
+        options.envs = parseEnv(options.env || [], options.envFile || "");
+
+        upgrade(options);
+    });
+
 program.addCommand(setApiKeyCommand);
 program.addCommand(deployCommand);
 program.addCommand(teepodsCommand);
 program.addCommand(imagesCommand);
+program.addCommand(upgradeCommand);
 
 // Parse the CLI arguments
 program.parse(process.argv);
