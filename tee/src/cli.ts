@@ -53,10 +53,11 @@ const setApiKeyCommand = new Command()
 const deployCommand = new Command()
     .command("deploy")
     .description("Deploy to TEE cloud or locally against a simulator")
-    .option("-t, --type <type>", "Specify the TEE vendor type")
+    .option("-t, --type <type>", "Specify the TEE vendor type", "phala")
     .option(
         "-m, --mode <mode>",
         "Specify the deployment mode (e.g., agent docker file or other local testing deployments)",
+        "docker-compose",
     )
     .option(
         "-n, --name <name>",
@@ -125,10 +126,11 @@ const imagesCommand = new Command()
 const upgradeCommand = new Command()
     .command("upgrade")
     .description("Upgrade the TEE CLI")
-    .option("-t, --type <type>", "Specify the TEE vendor type")
+    .option("-t, --type <type>", "Specify the TEE vendor type", "phala")
     .option(
         "-m, --mode <mode>",
         "Specify the deployment mode (e.g., agent docker file or other local testing deployments)",
+        "docker-compose",
     )
     .option("--app-id <appId>", "Specify the app id")
     .option(
