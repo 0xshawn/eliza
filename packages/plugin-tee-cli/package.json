@@ -1,5 +1,5 @@
 {
-    "name": "tee",
+    "name": "@elizaos/plugin-tee-cli",
     "version": "0.1.0",
     "description": "TEE CLI",
     "main": "dist/cli.js",
