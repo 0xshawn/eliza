@@ -2,41 +2,35 @@
 # TEE CLI
 
 
-## Build
-
-```bash
-pnpm --filter tee build
-```
-
 ## Usage
 
 1. Query teepods
 
 ```bash
-npx tee-cli teepods
+pnpm cli teepods
 ```
 
 2. Query images of the selected teepod
 
 ```bash
-npx tee-cli images --teepod-id 2
+pnpm cli images --teepod-id 2
 ```
 
 
 3. Deploy the CVM via compose file
 
 ```bash
-npx tee-cli deploy \
-  -t phala \
-  -m docker-compose \
-  -n eliza \
-  -c sample.yml -e FOO=BAR --env-file./.env
+pnpm cli deploy \
+  -n <YOUR_APP_NAME> \
+  -c <YOUR_COMPOSE_FILE> \
+  --env-file <YOUR_ENV_FILE>
 ```
 
-## Debug
-
-If you want to debug the CLI, you can run the following command without building:
+4. Upgrade the CVM
 
 ```bash
-pnpm exec ts-node src/cli.ts teepods
+pnpm cli upgrade \
+  --app-id <YOUR_APP_ID> \
+  -c <YOUR_COMPOSE_FILE> \
+  --env-file <YOUR_ENV_FILE>
 ```
